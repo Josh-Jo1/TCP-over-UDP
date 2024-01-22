@@ -1,5 +1,7 @@
 import socket
 
+from packet import Packet
+
 RECV_ADDR = "127.0.0.1"
 RECV_PORT = 24000
 BIND_PORT = 24001
@@ -22,12 +24,13 @@ class Sender:
         self.recv_sock.bind(('', self.bind_port))
         
         # Send message
-        self.send_sock.sendto(TEST_MSG.encode(), (self.recv_addr, self.recv_port))
+        packet = Packet(1, 0, len(TEST_MSG), TEST_MSG)
+        self.send_sock.sendto(packet.encode(), (self.recv_addr, self.recv_port))
         print("Message sent!")
 
         # Wait for acknowledgement
         message, _ = self.recv_sock.recvfrom(2048)
-        print("Acknowledgement received: \'{}\'".format(message.decode()))
+        print("Acknowledgement received: \'{}\'".format(Packet.decode(message)))
 
 sender = Sender(RECV_ADDR, RECV_PORT, BIND_PORT)
 sender.run()

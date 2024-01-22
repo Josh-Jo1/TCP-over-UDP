@@ -17,6 +17,7 @@ python sender.py
 ## Development Process
 
 1. Create basic sender and receiver, connected over UDP.
+2. Create a Packet class to send header + data as bytes through sockets.
 
 
 ## Versions
