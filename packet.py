@@ -18,7 +18,7 @@ class Packet:
     @staticmethod
     def decode(bytes):
         type, seqnum, length = struct.unpack("!III", bytes[:HEADER_SIZE])
-        return Packet(type, seqnum, length, bytes[HEADER_SIZE:].decode())
+        return type, seqnum, length, bytes[HEADER_SIZE:].decode()
 
 
 if __name__ == "__main__":
@@ -27,5 +27,5 @@ if __name__ == "__main__":
     print(packet1)
     packet_bytes = packet1.encode()
     print(packet_bytes)
-    packet2 = Packet.decode(packet_bytes)
-    print(packet2)
+    type, seqnum, length, data = Packet.decode(packet_bytes)
+    print(type, seqnum, length, data)

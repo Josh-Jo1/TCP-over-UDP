@@ -1,6 +1,8 @@
 # TCP-over-UDP
 
 
+inShort.txt: 100 words\
+inLong.txt: 700 words
 
 ## Usage
 
@@ -16,8 +18,9 @@ python sender.py
 
 ## Development Process
 
-1. Create basic sender and receiver, connected over UDP.
-2. Create a Packet class to send header + data as bytes through sockets.
+1. Created basic sender and receiver, connected over UDP.
+2. Created a Packet class to send header + data as bytes through sockets.
+3. Added functionality to transfer files. Discovered no loss or reordering, so will need a network emulator.
 
 
 ## Versions
