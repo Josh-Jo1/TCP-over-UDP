@@ -1,6 +1,6 @@
 import struct
 
-HEADER_SIZE = 12
+from constants import *
 
 class Packet:
     def __init__(self, type, seqnum, length, data):
@@ -9,16 +9,19 @@ class Packet:
         self.length = length
         self.data = data
 
-    def encode(self):
-        return struct.pack("!III", self.type, self.seqnum, self.length) + self.data.encode()
-    
     def __repr__(self):
         return f'Packet({self.type}, {self.seqnum}, {self.length}, {self.data})'
+    
+    def extract(self):
+        return self.type, self.seqnum, self.length, self.data
+    
+    def encode(self):
+        return struct.pack("!III", self.type, self.seqnum, self.length) + self.data.encode()
 
     @staticmethod
     def decode(bytes):
-        type, seqnum, length = struct.unpack("!III", bytes[:HEADER_SIZE])
-        return type, seqnum, length, bytes[HEADER_SIZE:].decode()
+        type, seqnum, length = struct.unpack("!III", bytes[:PACKET_HEADER_SIZE])
+        return Packet(type, seqnum, length, bytes[PACKET_HEADER_SIZE:].decode())
 
 
 if __name__ == "__main__":
@@ -27,5 +30,7 @@ if __name__ == "__main__":
     print(packet1)
     packet_bytes = packet1.encode()
     print(packet_bytes)
-    type, seqnum, length, data = Packet.decode(packet_bytes)
+    packet2 = Packet.decode(packet_bytes)
+    print(packet2)
+    type, seqnum, length, data = packet2.extract()
     print(type, seqnum, length, data)
