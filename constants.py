@@ -15,3 +15,5 @@ RECV_PORT = 24002
 SEND_BIND_PORT = 24003
 
 RECV_BUFSIZE = (PACKET_HEADER_SIZE + PACKET_MAX_DATA_SIZE) * 2
+
+PROB_DROP = 0.4     # probability packet will be dropped

@@ -27,7 +27,7 @@ python sender.py
 2. Created a Packet class to send header + data as bytes through sockets.
 3. Added functionality to transfer files. Discovered no loss or reordering, so will need a network emulator.
 4. Created basic network emulator (like a middlebox) and connected sender with receiver.
-
+5. Implemented dropping of packets in network emulator and changed sender to have separate threads for sending and receiving data.
 
 ## Versions
 

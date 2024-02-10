@@ -24,17 +24,18 @@ class Receiver:
         self.sock.bind(('', self.bind_port))
         
         while True:
-            # Wait for acknowledgement
+            # Receive message
             bytes = self.sock.recv(RECV_BUFSIZE)
-            _, _, _, msg = Packet.decode(bytes).extract()
-            print("Message received!")
+            type, seqnum, _, msg = Packet.decode(bytes).extract()
+            print(f"Packet {seqnum} received")
+
             if msg != "EOF":
                 self.recv_file.write(msg)
 
-            # Send message
-            packet = Packet(1, 0, len(ACK_MSG), ACK_MSG)
+            # Send Acknowledgement
+            packet = Packet(type, seqnum, len(ACK_MSG), ACK_MSG)
             self.sock.sendto(packet.encode(), (self.ne_addr, self.ne_port))
-            print("Acknowledgement sent!")
+            print(f"Packet {seqnum} sent")
 
             if msg == "EOF":
                 break
