@@ -28,6 +28,7 @@ python sender.py
 3. Added functionality to transfer files. Discovered no loss or reordering, so will need a network emulator.
 4. Created basic network emulator (like a middlebox) and connected sender with receiver.
 5. Implemented dropping of packets in network emulator and changed sender to have separate threads for sending and receiving data.
+6. Checkpoint: reformat code and comments for easier understanding
 
 ## Versions
 

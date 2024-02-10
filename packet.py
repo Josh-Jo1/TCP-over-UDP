@@ -1,36 +1,43 @@
+import logging
 import struct
 
 from constants import *
 
 class Packet:
-    def __init__(self, type, seqnum, length, data):
+    def __init__(self, type, packet_num, length, data):
         self.type = type
-        self.seqnum = seqnum
+        self.packet_num = packet_num
         self.length = length
         self.data = data
+    # end __init__
 
     def __repr__(self):
-        return f'Packet({self.type}, {self.seqnum}, {self.length}, {self.data})'
+        return f"Packet({self.type}, {self.packet_num}, {self.length}, {self.data})"
+    # end __repr__
     
     def extract(self):
-        return self.type, self.seqnum, self.length, self.data
+        return self.type, self.packet_num, self.length, self.data
+    # end extract
     
     def encode(self):
-        return struct.pack("!III", self.type, self.seqnum, self.length) + self.data.encode()
+        return struct.pack("!III", self.type, self.packet_num, self.length) + self.data.encode()
+    # end encode
 
     @staticmethod
     def decode(bytes):
-        type, seqnum, length = struct.unpack("!III", bytes[:PACKET_HEADER_SIZE])
-        return Packet(type, seqnum, length, bytes[PACKET_HEADER_SIZE:].decode())
-
+        type, packet_num, length = struct.unpack("!III", bytes[:HEADER_SIZE])
+        return Packet(type, packet_num, length, bytes[HEADER_SIZE:].decode())
+    # end decode
+# end Packet
 
 if __name__ == "__main__":
+    logging.basicConfig(format=LOGGING_FORMAT, datefmt=LOGGING_DATEFMT, level=LOGGING_LEVEL)
     msg = "Testing12345"
     packet1 = Packet(1, 0, len(msg), msg)
-    print(packet1)
+    logging.info(packet1)
     packet_bytes = packet1.encode()
-    print(packet_bytes)
+    logging.info(packet_bytes)
     packet2 = Packet.decode(packet_bytes)
-    print(packet2)
-    type, seqnum, length, data = packet2.extract()
-    print(type, seqnum, length, data)
+    logging.info(packet2)
+    type, packet_num, length, data = packet2.extract()
+    logging.info(type, packet_num, length, data)

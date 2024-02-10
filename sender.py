@@ -1,3 +1,4 @@
+import logging
 import socket
 import threading
 
@@ -12,43 +13,40 @@ class Sender:
 
         self.send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
         self.send_file = open(SEND_FILENAME, 'r')
     # end __init__
 
     def __del__(self):
         self.send_sock.close()
         self.recv_sock.close()
-
         self.send_file.close()
     # end __del__
 
     def sendData(self):
-        seqnum = 0
+        packet_num = 0
         while True:
             # Get message
-            msg = self.send_file.read(PACKET_MAX_DATA_SIZE)
-            if msg == '':
-                msg = "EOF"
+            msg = self.send_file.read(MAX_DATA_SIZE)
 
             # Send message
-            type = 2 if msg == "EOF" else 1
-            packet = Packet(type, seqnum, len(msg), msg)
+            type = EOF if msg == '' else DATA
+            packet = Packet(type, packet_num, len(msg), msg)
             self.send_sock.sendto(packet.encode(), (self.ne_host, self.ne_port))
-            print(f"Packet {seqnum} sent")
+            logging.info(f"Packet {packet_num} sent")
 
-            seqnum += 1
-            if msg == "EOF":
+            if type == EOF:
                 break
+            packet_num += 1
     # end sendData
-        
+
     def recvData(self):
         while True:
             # Receive acknowledgement
             bytes = self.recv_sock.recv(RECV_BUFSIZE)
-            type, seqnum, _, msg = Packet.decode(bytes).extract()
-            print(f"Packet {seqnum} received: {msg}")
-            if (type == 2):
+            type, packet_num, _, msg = Packet.decode(bytes).extract()
+            logging.info(f"Packet {packet_num} received: {msg}")
+
+            if (type == EOF):
                 break
 
     def run(self):
@@ -64,5 +62,6 @@ class Sender:
 # end Sender
 
 if __name__ == '__main__':
+    logging.basicConfig(format=LOGGING_FORMAT, datefmt=LOGGING_DATEFMT, level=LOGGING_LEVEL)
     sender = Sender(NE_ADDR, SEND_PORT, SEND_BIND_PORT)
     sender.run()

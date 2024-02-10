@@ -1,3 +1,4 @@
+import logging
 import socket
 
 from constants import *
@@ -10,13 +11,11 @@ class Receiver:
         self.bind_port = bind_port
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
         self.recv_file = open(RECV_FILENAME, 'w')
     # end __init__
 
     def __del__(self):
         self.sock.close()
-
         self.recv_file.close()
     # end __del__
 
@@ -26,22 +25,24 @@ class Receiver:
         while True:
             # Receive message
             bytes = self.sock.recv(RECV_BUFSIZE)
-            type, seqnum, _, msg = Packet.decode(bytes).extract()
-            print(f"Packet {seqnum} received")
+            type, packet_num, _, msg = Packet.decode(bytes).extract()
+            logging.info(f"Packet {packet_num} received")
 
-            if msg != "EOF":
+            # Store message
+            if type == DATA:
                 self.recv_file.write(msg)
 
-            # Send Acknowledgement
-            packet = Packet(type, seqnum, len(ACK_MSG), ACK_MSG)
+            # Send acknowledgement
+            packet = Packet(type, packet_num, len(ACK_MSG), ACK_MSG)
             self.sock.sendto(packet.encode(), (self.ne_addr, self.ne_port))
-            print(f"Packet {seqnum} sent")
+            logging.info(f"Packet {packet_num} sent")
 
-            if msg == "EOF":
+            if type == EOF:
                 break
     # end run
 # end Receiver
 
 if __name__ == '__main__':
+    logging.basicConfig(format=LOGGING_FORMAT, datefmt=LOGGING_DATEFMT, level=LOGGING_LEVEL)
     receiver = Receiver(NE_ADDR, RECV_PORT, RECV_BIND_PORT)
     receiver.run()
