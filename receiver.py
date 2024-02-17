@@ -1,5 +1,7 @@
 import logging
 import socket
+import time
+from threading import Timer, Thread
 
 from constants import *
 from packet import Packet
@@ -21,23 +23,36 @@ class Receiver:
 
     def run(self):
         self.sock.bind(('', self.bind_port))
-        
+
+        # Receive handshake message
+        bytes = self.sock.recv(RECV_BUFSIZE)
+        packet_num, ack_num, _, _, _, _ = Packet.decode(bytes).extract()
+        logging.info(f"Packet {packet_num} {ack_num} received")
+
+        # Send handshake acknowledgement
+        bytes = Packet(packet_num + 1, INIT_RECV_PACKET_NUM, 1, 1, 0, "").encode()
+        self.sock.sendto(bytes, (self.ne_addr, self.ne_port))
+        logging.info(f"Packet {packet_num + 1} {INIT_RECV_PACKET_NUM} sent")
+
+        logging.info(f"Handshake done")
+
+
         while True:
             # Receive message
             bytes = self.sock.recv(RECV_BUFSIZE)
-            type, packet_num, _, msg = Packet.decode(bytes).extract()
+            packet_num, _, _, _, fin_bit, msg = Packet.decode(bytes).extract()
             logging.info(f"Packet {packet_num} received")
 
             # Store message
-            if type == DATA:
+            if fin_bit == 0:
                 self.recv_file.write(msg)
 
             # Send acknowledgement
-            packet = Packet(type, packet_num, len(ACK_MSG), ACK_MSG)
+            packet = Packet(packet_num + 1, 0, 1, 0, fin_bit, ACK_MSG)
             self.sock.sendto(packet.encode(), (self.ne_addr, self.ne_port))
             logging.info(f"Packet {packet_num} sent")
 
-            if type == EOF:
+            if fin_bit == 1:
                 break
     # end run
 # end Receiver

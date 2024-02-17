@@ -1,7 +1,7 @@
 import logging
 import random
 import socket
-import threading
+from threading import Thread 
 
 from constants import *
 from packet import Packet
@@ -17,18 +17,18 @@ class NetworkEmulator:
     # end __init__
     
     def processPacket(self, thread_name, sock, dest_addr, dest_port, bytes):
-        type, packet_num, _, _ = Packet.decode(bytes).extract()
-        logging.info(f"{thread_name}: Packet {packet_num} received")
+        packet_num, ack_num, _, syn_bit, fin_bit, _ = Packet.decode(bytes).extract()
+        logging.info(f"{thread_name}: Packet {packet_num} {ack_num} received")
 
-        if (type == DATA):
+        if (syn_bit == 0 and fin_bit == 0):     # data packet?
             # Packet may be dropped
             if (random.random() < PROB_DROP):
-                logging.info(f"{thread_name}: Packet {packet_num} dropped")
+                logging.info(f"{thread_name}: Packet {packet_num} {ack_num} dropped")
                 return
 
         # Packet is sent
         sock.sendto(bytes, (dest_addr, dest_port))
-        logging.info(f"{thread_name}: Packet {packet_num} sent")
+        logging.info(f"{thread_name}: Packet {packet_num} {ack_num} sent")
     # end processPacket
 
     def createChannel(self, thread_name, bind_port, dest_addr, dest_port):
@@ -40,8 +40,8 @@ class NetworkEmulator:
     # end createChannel
     
     def run(self):
-        sendThread = threading.Thread(target=self.createChannel, args=("send", self.recv_bind_port, self.recv_addr, self.recv_port))
-        recvThread = threading.Thread(target=self.createChannel, args=("recv", self.send_bind_port, self.send_addr, self.send_port))
+        sendThread = Thread(target=self.createChannel, args=("send", self.recv_bind_port, self.recv_addr, self.recv_port))
+        recvThread = Thread(target=self.createChannel, args=("recv", self.send_bind_port, self.send_addr, self.send_port))
         sendThread.start()
         recvThread.start()
     # end run

@@ -8,12 +8,8 @@ ACK_MSG = "All good!"
 
 # Packet
 
-HEADER_SIZE = 12
+HEADER_SIZE = 2 * 4 + 1 * 3
 MAX_DATA_SIZE = 200
-
-DATA = 0
-ACK = 1
-EOF = 2
 
 # Sockets
 
@@ -30,10 +26,17 @@ RECV_BUFSIZE = HEADER_SIZE + MAX_DATA_SIZE
 
 # Network Emulator
 
-PROB_DROP = 0.4     # probability packet will be dropped
+PROB_DROP = 0.9     # probability packet will be dropped
+
+TIMEOUT = 5         # time till sender will resend packet (in seconds)
 
 # Logging
 
 LOGGING_FORMAT = "%(asctime)s %(message)s"
 LOGGING_DATEFMT = "%H:%M:%S"
 LOGGING_LEVEL = INFO
+
+# Handshake
+
+INIT_SEND_PACKET_NUM = 0
+INIT_RECV_PACKET_NUM = 0
