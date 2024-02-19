@@ -2,6 +2,7 @@ import logging
 import socket
 from threading import Lock, Condition, Timer, Thread
 
+from window import Window
 from constants import *
 from packet import Packet
 
@@ -17,7 +18,7 @@ class Sender:
 
         self.lock = Lock()
         self.send_cv = Condition()
-        self.cwnd = []
+        self.cwnd = Window(CWND_CAPACITY)
         self.timer = None
         self.packet_num = 0
         self.expected_ack_num = 0
@@ -31,20 +32,24 @@ class Sender:
 
     def sendData(self):
         # Handshake
-        bytes = Packet(INIT_SEND_PACKET_NUM, 0, 0, 1, 0, "").encode()
-        self.send_sock.sendto(bytes, (self.ne_host, self.ne_port))
+        packet = Packet(INIT_SEND_PACKET_NUM, 0, 0, 1, 0, "")
+        self.send_sock.sendto(packet.encode(), (self.ne_host, self.ne_port))
         logging.info(f"Packet {INIT_SEND_PACKET_NUM} {0} sent")
 
-        self.cwnd.append(bytes)
+        self.lock.acquire()
+
+        self.cwnd.push(packet)
         self.timer = Timer(TIMEOUT, self.onTimeout)
         self.timer.start()
+
+        self.lock.release()
+
         self.send_cv.acquire()
         self.send_cv.wait()
 
         logging.info(f"Handshake done")
 
 
-        # Currently, no timer or congestion control, so some packets WILL be lost
         while True:
             # Get message
             msg = self.send_file.read(MAX_DATA_SIZE)
@@ -55,9 +60,19 @@ class Sender:
             self.send_sock.sendto(packet.encode(), (self.ne_host, self.ne_port))
             logging.info(f"Packet {self.packet_num} sent")
 
+            self.lock.acquire()
+
+            self.cwnd.push(packet)
+            self.timer = Timer(TIMEOUT, self.onTimeout)
+            self.timer.start()
+            
+            self.lock.release()
+
+            self.send_cv.acquire()
+            self.send_cv.wait()
+
             if fin_bit == 1:
                 break
-            self.packet_num += 1
     # end sendData
 
     def recvData(self):
@@ -65,12 +80,15 @@ class Sender:
         packet_num, ack_num, ack_bit, syn_bit, _, _ = Packet.decode(bytes).extract()
         logging.info(f"Received {packet_num}, {ack_num}, {ack_bit}, {syn_bit}")
         
+        self.lock.acquire()
+
+        self.timer.cancel()
+        self.cwnd.pop()
+
         self.packet_num = ack_num
         self.expected_ack_num = packet_num + 1
-        logging.info(f"packet_num: {self.packet_num} expected_packet_num {self.expected_ack_num}")
-        
-        self.lock.acquire()
-        self.timer.cancel()
+        logging.info(f"packet_num: {self.packet_num} expected_packet_num: {self.expected_ack_num}")
+
         self.lock.release()
 
         self.send_cv.acquire()
@@ -81,8 +99,23 @@ class Sender:
         while True:
             # Receive acknowledgement
             bytes = self.recv_sock.recv(RECV_BUFSIZE)
-            packet_num, _, _, _, fin_bit, msg = Packet.decode(bytes).extract()
+            packet_num, ack_num, _, _, fin_bit, msg = Packet.decode(bytes).extract()
             logging.info(f"Packet {packet_num} received: {msg}")
+
+            self.lock.acquire()
+
+            self.timer.cancel()
+            self.cwnd.pop()
+
+            self.packet_num = ack_num
+            self.expected_ack_num = packet_num + 1
+            logging.info(f"packet_num: {self.packet_num} expected_packet_num: {self.expected_ack_num}")
+
+            self.lock.release()
+
+            self.send_cv.acquire()
+            self.send_cv.notify()
+            self.send_cv.release()
 
             if (fin_bit == 1):
                 break
@@ -90,7 +123,8 @@ class Sender:
 
     def onTimeout(self):
         self.lock.acquire()
-        self.send_sock.sendto(self.cwnd[0], (self.ne_host, self.ne_port))
+        self.send_sock.sendto(self.cwnd.head().encode(), (self.ne_host, self.ne_port))
+        logging.info(f"Timer packet sent")
         self.timer = Timer(TIMEOUT, self.onTimeout)
         self.timer.start()
         self.lock.release()

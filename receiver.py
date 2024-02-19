@@ -1,7 +1,5 @@
 import logging
 import socket
-import time
-from threading import Timer, Thread
 
 from constants import *
 from packet import Packet
@@ -14,6 +12,8 @@ class Receiver:
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.recv_file = open(RECV_FILENAME, 'w')
+
+        self.expected_packet_num = 0
     # end __init__
 
     def __del__(self):
@@ -30,9 +30,10 @@ class Receiver:
         logging.info(f"Packet {packet_num} {ack_num} received")
 
         # Send handshake acknowledgement
-        bytes = Packet(packet_num + 1, INIT_RECV_PACKET_NUM, 1, 1, 0, "").encode()
-        self.sock.sendto(bytes, (self.ne_addr, self.ne_port))
-        logging.info(f"Packet {packet_num + 1} {INIT_RECV_PACKET_NUM} sent")
+        self.expected_packet_num = packet_num + 1
+        packet = Packet(INIT_RECV_PACKET_NUM, self.expected_packet_num, 1, 1, 0, "")
+        self.sock.sendto(packet.encode(), (self.ne_addr, self.ne_port))
+        logging.info(f"Packet {INIT_RECV_PACKET_NUM} {self.expected_packet_num} sent")
 
         logging.info(f"Handshake done")
 
@@ -44,13 +45,14 @@ class Receiver:
             logging.info(f"Packet {packet_num} received")
 
             # Store message
-            if fin_bit == 0:
+            if fin_bit == 0 and self.expected_packet_num == packet_num:
                 self.recv_file.write(msg)
 
             # Send acknowledgement
-            packet = Packet(packet_num + 1, 0, 1, 0, fin_bit, ACK_MSG)
+            self.expected_packet_num = packet_num + 1
+            packet = Packet(0, self.expected_packet_num, 1, 0, fin_bit, ACK_MSG)
             self.sock.sendto(packet.encode(), (self.ne_addr, self.ne_port))
-            logging.info(f"Packet {packet_num} sent")
+            logging.info(f"Packet {self.expected_packet_num} sent")
 
             if fin_bit == 1:
                 break

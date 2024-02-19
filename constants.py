@@ -6,6 +6,8 @@ SEND_FILENAME = "inLong.txt"
 RECV_FILENAME = "outLong.txt"
 ACK_MSG = "All good!"
 
+CWND_CAPACITY = 10
+
 # Packet
 
 HEADER_SIZE = 2 * 4 + 1 * 3
@@ -26,9 +28,9 @@ RECV_BUFSIZE = HEADER_SIZE + MAX_DATA_SIZE
 
 # Network Emulator
 
-PROB_DROP = 0.9     # probability packet will be dropped
+PROB_DROP = 0.2     # probability packet will be dropped
 
-TIMEOUT = 5         # time till sender will resend packet (in seconds)
+TIMEOUT = 2         # time till sender will resend packet (in seconds)
 
 # Logging
 
