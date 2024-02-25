@@ -18,7 +18,7 @@ class Sender:
 
         self.lock = Lock()
         self.send_cv = Condition()
-        self.cwnd = Window(CWND_CAPACITY)
+        self.cwnd = Window()
         self.timer = None
         self.packet_num = 0
         self.expected_ack_num = 0

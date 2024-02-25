@@ -6,7 +6,7 @@ SEND_FILENAME = "inLong.txt"
 RECV_FILENAME = "outLong.txt"
 ACK_MSG = "All good!"
 
-CWND_CAPACITY = 10
+MAX_CWND_CAPACITY = 10
 
 # Packet
 
