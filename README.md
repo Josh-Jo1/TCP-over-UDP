@@ -29,9 +29,10 @@ python sender.py
 4. Created basic network emulator (like a middlebox) and connected sender with receiver.
 5. Implemented dropping of packets in network emulator and changed sender to have separate threads for sending and receiving data.
 6. Checkpoint: reformat code and comments for easier understanding.
-7. Improved Packet structure to match real TCP header more closely and implemented (reliable) connection handshake.
+7. Improved Packet structure to match real TCP header more closely and implemented (trivially reliable) connection handshake.
 8. Created a Window class and implemented reliable data transfer for data packets (not yet congestion-controlled).
 9. Updated Window class to a bounded buffer and added testing.
+10. Improved connection handshake to reliable 3-way handshake and moved logic for packet number to send thread.
 
 ## Versions
 

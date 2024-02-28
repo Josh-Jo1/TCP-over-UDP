@@ -17,10 +17,10 @@ class NetworkEmulator:
     # end __init__
     
     def processPacket(self, thread_name, sock, dest_addr, dest_port, bytes):
-        packet_num, ack_num, _, syn_bit, fin_bit, _ = Packet.decode(bytes).extract()
+        packet_num, ack_num, _, _, fin_bit, _ = Packet.decode(bytes).extract()
         logging.info(f"{thread_name}: Packet {packet_num} {ack_num} received")
 
-        if (syn_bit == 0 and fin_bit == 0):     # data packet?
+        if fin_bit == 0:     # for simplicity, FIN packets not dropped
             # Packet may be dropped
             if (random.random() < PROB_DROP):
                 logging.info(f"{thread_name}: Packet {packet_num} {ack_num} dropped")
