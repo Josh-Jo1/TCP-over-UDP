@@ -14,11 +14,13 @@ class Window:
 
     def __repr__(self):
         formattedWindow = [None] * self.size
+        formattedWindowIdx = 0
         i = self.headIdx
-        while i != self.tailIdx:
+        while formattedWindowIdx < self.size:
             packet = self.window[i]
             packet_num, ack_num, _, _, _, _ = packet.extract()
-            formattedWindow[i - self.headIdx] = f"Packet({packet_num}, {ack_num})"
+            formattedWindow[formattedWindowIdx] = f"Packet({packet_num}, {ack_num})"
+            formattedWindowIdx += 1
             i = (i + 1) % MAX_CWND_CAPACITY
         return '[' + ", ".join(formattedWindow) + ']'
     # end __repr__
@@ -35,12 +37,12 @@ class Window:
         self.size += 1
     # end append
 
-    def pop(self):
-        if self.size == 0:
-            logging.warning("Window is empty!")
+    def pop(self, times = 1):
+        if self.size < times:
+            logging.warning(f"Window only has {self.size} items!")
             return
-        self.headIdx = (self.headIdx + 1) % MAX_CWND_CAPACITY
-        self.size -= 1
+        self.headIdx = (self.headIdx + times) % MAX_CWND_CAPACITY
+        self.size -= times
     # end pop
 
     def head(self):
@@ -49,12 +51,6 @@ class Window:
             return None
         return self.window[self.headIdx]
     # end head
-
-    def clear(self):
-        self.headIdx = 0
-        self.tailIdx = 0
-        self.size = 0
-    # end clear
 
     def getSize(self):
         return self.size
@@ -65,12 +61,15 @@ class Window:
     # end getCapacity
 
     def setCapacity(self, value):
+        if value < MIN_CWND_CAPACITY:
+            self.capacity = MIN_CWND_CAPACITY
+            logging.warning(f"Capacity set to {MIN_CWND_CAPACITY}")
+            return
         if value > MAX_CWND_CAPACITY:
             self.capacity = MAX_CWND_CAPACITY
             logging.warning(f"Capacity set to {MAX_CWND_CAPACITY}")
-            return False
+            return
         self.capacity = value
-        return True
     # end setCapacity
 # end Window
 
@@ -100,8 +99,7 @@ if __name__ == "__main__":
     print(cwnd)
     # Expect "[Packet(1, 0)]"
     
-    retval = cwnd.setCapacity(2)
-    assert retval == True
+    cwnd.setCapacity(2)
     assert cwnd.getSize() == 1
     assert cwnd.getCapacity() == 2
 
@@ -120,9 +118,12 @@ if __name__ == "__main__":
     
     print(cwnd)
     # Expect "[Packet(2, 0)]"
+
+    cwnd.push(packet2)
+    cwnd.pop(2)
+    assert cwnd.getSize() == 0
     
-    retval = cwnd.setCapacity(MAX_CWND_CAPACITY + 1)
+    cwnd.setCapacity(MAX_CWND_CAPACITY + 1)
     # Expect log "Capacity set to <MAX_CWND_CAPACITY>"
-    assert retval == False
-    assert cwnd.getSize() == 1
+    assert cwnd.getSize() == 0
     assert cwnd.getCapacity() == MAX_CWND_CAPACITY

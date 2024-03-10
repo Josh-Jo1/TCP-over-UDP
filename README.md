@@ -33,6 +33,12 @@ python sender.py
 8. Created a Window class and implemented reliable data transfer for data packets (not yet congestion-controlled).
 9. Updated Window class to a bounded buffer and added testing.
 10. Improved connection handshake to reliable 3-way handshake and moved logic for packet number to send thread.
+11. Implemented TCP Reno in sender and cumulative ACKs in receiver. After one packet dropped, congestion window becomes ineffective, so need to create a buffer for receiver.
+
+## Resources
+
+1. https://www.youtube.com/watch?v=kRS4J-m5n04
+2. https://www.rfc-editor.org/rfc/rfc9293.html
 
 ## Versions
 

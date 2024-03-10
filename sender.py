@@ -17,12 +17,15 @@ class Sender:
         self.send_file = open(SEND_FILENAME, 'r')
 
         self.lock = Lock()
-        self.send_cv = Condition()      # need this for now since each packet is ACKed before next sent
+        self.send_cv = Condition()
+        self.packet_num = None
+        self.expected_packet_num = None
+
+        # Congestion control
         self.cwnd = Window()
         self.timer = None
-
-        self.packet_num = None
-        self.expected_ack_num = None
+        self.ssthresh = INIT_SSTHRESH
+        self.aimd_count = None
     # end __init__
 
     def __del__(self):
@@ -45,18 +48,19 @@ class Sender:
         packet_num, ack_num, ack_bit, syn_bit, _, _ = Packet.decode(bytes).extract()
         logging.info("SYN ACK Packet received")
         self.timer.cancel()
+        self.timer = None
         self.cwnd.pop()
         if ack_bit == 0 or syn_bit == 0:
             logging.warning(f"Packet received with {ack_bit} {syn_bit}!")
         self.packet_num = ack_num
-        self.expected_ack_num = packet_num + 1
+        self.expected_packet_num = packet_num + 1
         
         # Send ACK packet
-        packet = Packet(self.packet_num, self.expected_ack_num, 1, 0, 0, "")
+        packet = Packet(self.packet_num, self.expected_packet_num, 1, 0, 0, "")
         self.send_sock.sendto(packet.encode(), (self.ne_addr, self.ne_port))
         logging.info("ACK Packet sent")
         
-        logging.info(f"Handshake done {self.packet_num} {self.expected_ack_num}")
+        logging.info(f"Handshake done {self.packet_num} {self.expected_packet_num}")
     # end perform3WayHandshake
 
     def sendData(self):
@@ -67,50 +71,107 @@ class Sender:
             # Send message
             fin_bit = 1 if msg == '' else 0
             self.lock.acquire()
-            packet = Packet(self.packet_num, self.expected_ack_num, 1, 0, fin_bit, msg)
+            packet = Packet(self.packet_num, self.expected_packet_num, 1, 0, fin_bit, msg)
             self.send_sock.sendto(packet.encode(), (self.ne_addr, self.ne_port))
             logging.info(f"Packet {self.packet_num} sent")
 
             self.cwnd.push(packet)
-            self.timer = Timer(TIMEOUT, self.onTimeout)
-            self.timer.start()
+            logging.info(f"cwnd = {self.cwnd}")
+            if self.timer == None:
+                self.timer = Timer(TIMEOUT, self.onTimeout)
+                self.timer.start()
             self.packet_num += 1
 
-            # Wait till acknowledgement received
-            with self.send_cv:
+            if self.cwnd.getSize() == self.cwnd.getCapacity():
+                # Wait till acknowledgement received
+                with self.send_cv:
+                    self.lock.release()
+                    self.send_cv.wait()
+            else:
                 self.lock.release()
-                self.send_cv.wait()
 
             if fin_bit == 1:
                 break
     # end sendData
 
     def recvData(self):
+        lastAckPacket = None
+        dupCount = 0
         while True:
             # Receive acknowledgement
             bytes = self.recv_sock.recv(RECV_BUFSIZE)
-            packet_num, _, _, _, fin_bit, msg = Packet.decode(bytes).extract()
-            logging.info(f"Packet {packet_num} received: {msg}")
+            _, ack_num, ack_bit, _, fin_bit, msg = Packet.decode(bytes).extract()
+            assert ack_bit == 1
+            logging.info(f"ACK packet {ack_num} received: {msg}")
 
+            # Check for triple duplicate ACK
+            if lastAckPacket == ack_num:
+                dupCount += 1
+                if dupCount == 3:
+                    # Fast Recovery
+                    logging.info(f"Triple duplicate ACK packet {ack_num}")
+                    self.lock.acquire()
+                    self.ssthresh = max(self.ssthresh // 2, MIN_CWND_CAPACITY * 2)
+                    self.cwnd.setCapacity(self.ssthresh)
+                    self.aimd_count = None
+                    dupCount = 0
+                    self.lock.release()
+                continue
+            else:
+                lastAckPacket = ack_num
+
+            # Check for correct ACK
             self.lock.acquire()
-            self.timer.cancel()
-            self.cwnd.pop()
-
-            # Notify to send next message
-            with self.send_cv:
+            head_packet_num, _, _, _, _, _ = self.cwnd.head().extract()
+            num_ack_packets = ack_num - head_packet_num
+            if num_ack_packets < 1:
                 self.lock.release()
-                self.send_cv.notify()
+                continue
+            self.timer.cancel()
+            self.timer = None
+            self.cwnd.pop(num_ack_packets)
+            logging.info(f"cwnd = {self.cwnd}")
+            if self.cwnd.getSize() > 0:
+                self.timer = Timer(TIMEOUT, self.onTimeout)
+                self.timer.start()
 
+            # Adjust congestion window
+            if self.cwnd.getCapacity() < self.ssthresh:
+                self.cwnd.setCapacity(self.cwnd.getCapacity() + 1)
+            else:
+                if self.aimd_count is None:
+                    self.aimd_count = self.cwnd.getCapacity()
+                self.aimd_count -= 1
+                if self.aimd_count <= 0:
+                    self.cwnd.setCapacity(self.cwnd.getCapacity() + 1)
+                    self.aimd_count = self.cwnd.getCapacity()
+
+            if self.cwnd.getSize() < self.cwnd.getCapacity():
+                # Notify to send next message
+                with self.send_cv:
+                    self.send_cv.notify()
+
+            self.lock.release()
             if fin_bit == 1:
                 break
     # end recvData
 
     def onTimeout(self):
         self.lock.acquire()
-        self.send_sock.sendto(self.cwnd.head().encode(), (self.ne_addr, self.ne_port))
-        logging.info(f"Timer packet sent")
-        self.timer = Timer(TIMEOUT, self.onTimeout)
-        self.timer.start()
+        packet = self.cwnd.head()
+        packet_num, _, _, _, fin_bit, _ = packet.extract()
+        self.send_sock.sendto(packet.encode(), (self.ne_addr, self.ne_port))
+        logging.info(f"Timer packet {packet_num} sent")
+
+        if fin_bit == 0:
+            self.timer = Timer(TIMEOUT, self.onTimeout)
+            self.timer.start()
+
+        # Adjust congestion window
+        self.ssthresh = max(self.cwnd.getCapacity() // 2, MIN_CWND_CAPACITY)
+        self.cwnd.setCapacity(MIN_CWND_CAPACITY)
+        self.aimd_count = None
+
         self.lock.release()
     # end onTimeout
 

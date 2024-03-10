@@ -54,17 +54,18 @@ class Receiver:
             packet_num, _, _, _, fin_bit, msg = Packet.decode(bytes).extract()
             logging.info(f"Packet {packet_num} received")
 
-            # Store message
-            if fin_bit == 0 and self.expected_packet_num == packet_num:
-                self.recv_file.write(msg)
+            if self.expected_packet_num == packet_num:
+                # Store message
+                if fin_bit == 0:
+                    self.recv_file.write(msg)
+                self.expected_packet_num += 1
 
             # Send acknowledgement
-            self.expected_packet_num = packet_num + 1
             packet = Packet(self.packet_num, self.expected_packet_num, 1, 0, fin_bit, ACK_MSG)
             self.sock.sendto(packet.encode(), (self.ne_addr, self.ne_port))
             logging.info(f"Packet {self.expected_packet_num} sent")
 
-            if fin_bit == 1:    # this works since FIN packets not dropped
+            if fin_bit == 1 and self.expected_packet_num - 1 == packet_num:    # this works since FIN packets not dropped
                 break
     # end run
 # end Receiver
