@@ -3,6 +3,7 @@ import socket
 
 from constants import *
 from packet import Packet
+from stash import Stash
 
 class Receiver:
     def __init__(self, ne_addr, ne_port, bind_port):
@@ -15,6 +16,9 @@ class Receiver:
 
         self.packet_num = None
         self.expected_packet_num = None
+
+        # Receiver Stash
+        self.stash = Stash()
     # end __init__
 
     def __del__(self):
@@ -51,7 +55,8 @@ class Receiver:
         while True:
             # Receive message
             bytes = self.sock.recv(RECV_BUFSIZE)
-            packet_num, _, _, _, fin_bit, msg = Packet.decode(bytes).extract()
+            packet = Packet.decode(bytes)
+            packet_num, _, _, _, fin_bit, msg = packet.extract()
             logging.info(f"Packet {packet_num} received")
 
             if self.expected_packet_num == packet_num:
@@ -59,6 +64,22 @@ class Receiver:
                 if fin_bit == 0:
                     self.recv_file.write(msg)
                 self.expected_packet_num += 1
+                # Write data from stashed packets while possible
+                while self.stash.head() is not None:
+                    packet_num, _, _, _, fin_bit, msg = self.stash.head().extract()
+                    # Store message
+                    if fin_bit == 0:
+                        self.recv_file.write(msg)
+                    self.expected_packet_num += 1
+                    self.stash.pop()
+                self.stash.pop()
+                logging.info(f"pop stash = {self.stash}")
+            else:
+                # Stash packet if possible
+                futurePacketNum = packet_num - self.expected_packet_num - 1
+                if 0 <= futurePacketNum < STASH_CAPACITY:
+                    self.stash.insert(futurePacketNum, packet)
+                logging.info(f"insert stash = {self.stash}")
 
             # Send acknowledgement
             packet = Packet(self.packet_num, self.expected_packet_num, 1, 0, fin_bit, ACK_MSG)

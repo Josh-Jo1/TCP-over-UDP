@@ -76,7 +76,7 @@ class Sender:
             logging.info(f"Packet {self.packet_num} sent")
 
             self.cwnd.push(packet)
-            logging.info(f"cwnd = {self.cwnd}")
+            logging.info(f"send cwnd = {self.cwnd}")
             if self.timer == None:
                 self.timer = Timer(TIMEOUT, self.onTimeout)
                 self.timer.start()
@@ -130,7 +130,7 @@ class Sender:
             self.timer.cancel()
             self.timer = None
             self.cwnd.pop(num_ack_packets)
-            logging.info(f"cwnd = {self.cwnd}")
+            logging.info(f"recv cwnd = {self.cwnd}")
             if self.cwnd.getSize() > 0:
                 self.timer = Timer(TIMEOUT, self.onTimeout)
                 self.timer.start()

@@ -9,20 +9,20 @@ class Window:
         self.headIdx = 0
         self.tailIdx = 0
         self.capacity = 1
-        self.window: list[Packet] = [None] * MAX_CWND_CAPACITY
+        self.buffer: list[Packet] = [None] * MAX_CWND_CAPACITY
     # end __init__
 
     def __repr__(self):
-        formattedWindow = [None] * self.size
-        formattedWindowIdx = 0
+        formattedBuffer = [None] * self.size
+        formattedBufferIdx = 0
         i = self.headIdx
-        while formattedWindowIdx < self.size:
-            packet = self.window[i]
+        while formattedBufferIdx < self.size:
+            packet = self.buffer[i]
             packet_num, ack_num, _, _, _, _ = packet.extract()
-            formattedWindow[formattedWindowIdx] = f"Packet({packet_num}, {ack_num})"
-            formattedWindowIdx += 1
+            formattedBuffer[formattedBufferIdx] = f"Packet({packet_num}, {ack_num})"
+            formattedBufferIdx += 1
             i = (i + 1) % MAX_CWND_CAPACITY
-        return '[' + ", ".join(formattedWindow) + ']'
+        return '[' + ", ".join(formattedBuffer) + ']'
     # end __repr__
 
     def push(self, packet):
@@ -32,7 +32,7 @@ class Window:
         if type(packet) != Packet:
             logging.warning(f"{packet} is not of type Packet!")
             return
-        self.window[self.tailIdx] = packet
+        self.buffer[self.tailIdx] = packet
         self.tailIdx = (self.tailIdx + 1) % MAX_CWND_CAPACITY
         self.size += 1
     # end append
@@ -49,7 +49,7 @@ class Window:
         if self.size == 0:
             logging.warning("Window is empty!")
             return None
-        return self.window[self.headIdx]
+        return self.buffer[self.headIdx]
     # end head
 
     def getSize(self):

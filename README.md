@@ -34,6 +34,7 @@ python sender.py
 9. Updated Window class to a bounded buffer and added testing.
 10. Improved connection handshake to reliable 3-way handshake and moved logic for packet number to send thread.
 11. Implemented TCP Reno in sender and cumulative ACKs in receiver. After one packet dropped, congestion window becomes ineffective, so need to create a buffer for receiver.
+12. Implemented a Stash class as a bounded buffer, with testing, to temporarily store near-future packets in receiver.
 
 ## Resources
 
