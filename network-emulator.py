@@ -1,6 +1,7 @@
 import logging
 import random
 import socket
+import time
 from threading import Thread 
 
 from constants import *
@@ -20,11 +21,15 @@ class NetworkEmulator:
         packet_num, ack_num, _, _, fin_bit, _ = Packet.decode(bytes).extract()
         logging.info(f"{thread_name}: Packet {packet_num} {ack_num} received")
 
-        if fin_bit == 0:     # for simplicity, FIN packets not dropped
+        if fin_bit == 0:     # for simplicity, FIN packets not affected
             # Packet may be dropped
             if (random.random() < PROB_DROP):
                 logging.info(f"{thread_name}: Packet {packet_num} {ack_num} dropped")
                 return
+            # Packet may be delayed
+            randomDelay = DELAY(random.random())
+            logging.info(f"{thread_name}: Packet {packet_num} delayed {randomDelay} seconds")
+            time.sleep(randomDelay)
 
         # Packet is sent
         sock.sendto(bytes, (dest_addr, dest_port))
@@ -36,7 +41,8 @@ class NetworkEmulator:
         sock.bind(('', bind_port))
         while True:
             bytes = sock.recv(RECV_BUFSIZE)
-            self.processPacket(thread_name, sock, dest_addr, dest_port, bytes)
+            processThread = Thread(target=self.processPacket, args=(thread_name, sock, dest_addr, dest_port, bytes))
+            processThread.start()
     # end createChannel
     
     def run(self):

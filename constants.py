@@ -27,8 +27,11 @@ RECV_BUFSIZE = HEADER_SIZE + MAX_DATA_SIZE
 # Network Emulator
 
 PROB_DROP = 0.1     # probability packet will be dropped
-
-TIMEOUT = 2         # time till sender will resend packet (in seconds)
+TIMEOUT = 6         # time till sender will resend packet (in seconds)
+MAX_DELAY = 4       # maximum time packet will be delayed (in seconds)
+def DELAY(x):       # determine time delay of packet
+    assert 0 <= x <= 1
+    return MAX_DELAY * (x ** 2)
 
 # Logging
 
