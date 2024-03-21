@@ -28,7 +28,7 @@ class NetworkEmulator:
                 return
             # Packet may be delayed
             randomDelay = DELAY(random.random())
-            logging.info(f"{thread_name}: Packet {packet_num} delayed {randomDelay} seconds")
+            logging.info(f"{thread_name}: Packet {packet_num} {ack_num} delayed {randomDelay} seconds")
             time.sleep(randomDelay)
 
         # Packet is sent

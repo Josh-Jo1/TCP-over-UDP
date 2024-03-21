@@ -1,8 +1,11 @@
 # TCP-over-UDP
 
+I undertook this project to showcase my knowledge of computer networks, which I gained during my studies at university. The project also provided
+me with the opportunity to conduct research on the RFC for TCP (RFC 9293) and apply my findings to the implementation. Furthermore, I relied on my
+understanding of concurrency to incorporate multithreading in the project, resulting in cleaner code and improved efficiency.
 
-inShort.txt: 100 words\
-inLong.txt: 700 words
+inShort.txt: 100 words / 696 characters\
+inLong.txt: 700 words / 4825 characters
 
 ## Usage
 
@@ -36,6 +39,7 @@ python sender.py
 11. Implemented TCP Reno in sender and cumulative ACKs in receiver. After one packet dropped, congestion window becomes ineffective, so need to create a buffer for receiver.
 12. Implemented a Stash class as a bounded buffer, with testing, to temporarily store near-future packets in receiver.
 13. Implemented delaying of packets in network emulator.
+14. Tested and completed project!
 
 ## Resources
 
@@ -48,4 +52,4 @@ Python 3.10.2
 
 Ubuntu 22.04.3 LTS
 
-WSL2 5.15.133.1
+WSL2 5.15.146.1
