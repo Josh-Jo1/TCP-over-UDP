@@ -40,6 +40,7 @@ python sender.py
 12. Implemented a Stash class as a bounded buffer, with testing, to temporarily store near-future packets in receiver.
 13. Implemented delaying of packets in network emulator.
 14. Tested and completed project!
+15. Bugfix: if last packet during handshake was delayed, DATA packets could be lost, so implemented stashing in handshake.
 
 ## Resources
 

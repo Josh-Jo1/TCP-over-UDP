@@ -26,6 +26,27 @@ class Receiver:
         self.recv_file.close()
     # end __del__
 
+    def stashPacketIfPossible(self, packet_num, packet):
+        futurePacketNum = packet_num - self.expected_packet_num - 1
+        if 0 <= futurePacketNum < STASH_CAPACITY:
+            self.stash.insert(futurePacketNum, packet)
+        logging.info(f"insert stash = {self.stash}")
+    # end stashPacketIfPossible
+
+    def writeDataFromStashedPacketsWhilePossible(self):
+        packet_num = None
+        fin_bit = None
+        while self.stash.head() is not None:
+            packet_num, _, _, _, fin_bit, msg = self.stash.head().extract()
+            # Store message
+            if fin_bit == 0:
+                self.recv_file.write(msg)
+            self.expected_packet_num += 1
+            self.stash.pop()
+        logging.info(f"pop stash = {self.stash}")
+        return packet_num, fin_bit
+    # end writeDataFromStashedPacketsWhilePossible
+
     def complete3WayHandshake(self):
         while True:
             # Receive packet
@@ -39,12 +60,13 @@ class Receiver:
                 packet = Packet(INIT_RECV_PACKET_NUM, self.expected_packet_num, 1, 1, 0, "")
                 self.sock.sendto(packet.encode(), (self.ne_addr, self.ne_port))
                 logging.info("SYN ACK Packet sent")
-            elif syn_bit == 0 and ack_bit == 1:
+            elif syn_bit == 1 and ack_bit == 1:
                 self.packet_num = ack_num
                 break
             else:
-                logging.warning(f"Packet received with {packet_num} {ack_num}!")
+                self.stashPacketIfPossible(packet_num, packet)
 
+        self.writeDataFromStashedPacketsWhilePossible()
         logging.info(f"Handshake done {self.packet_num} {self.expected_packet_num}")
     # end complete3WayHandshake
 
@@ -64,22 +86,13 @@ class Receiver:
                 if fin_bit == 0:
                     self.recv_file.write(msg)
                 self.expected_packet_num += 1
-                # Write data from stashed packets while possible
-                while self.stash.head() is not None:
-                    packet_num, _, _, _, fin_bit, msg = self.stash.head().extract()
-                    # Store message
-                    if fin_bit == 0:
-                        self.recv_file.write(msg)
-                    self.expected_packet_num += 1
-                    self.stash.pop()
+                ret_packet_num, ret_fin_bit = self.writeDataFromStashedPacketsWhilePossible()
+                if ret_packet_num is not None:
+                    packet_num = ret_packet_num
+                    fin_bit = ret_fin_bit
                 self.stash.pop()
-                logging.info(f"pop stash = {self.stash}")
             else:
-                # Stash packet if possible
-                futurePacketNum = packet_num - self.expected_packet_num - 1
-                if 0 <= futurePacketNum < STASH_CAPACITY:
-                    self.stash.insert(futurePacketNum, packet)
-                logging.info(f"insert stash = {self.stash}")
+                self.stashPacketIfPossible(packet_num, packet)
 
             # Send acknowledgement
             packet = Packet(self.packet_num, self.expected_packet_num, 1, 0, fin_bit, ACK_MSG)

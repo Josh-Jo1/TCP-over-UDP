@@ -55,8 +55,8 @@ class Sender:
         self.packet_num = ack_num
         self.expected_packet_num = packet_num + 1
         
-        # Send ACK packet
-        packet = Packet(self.packet_num, self.expected_packet_num, 1, 0, 0, "")
+        # Send SYN ACK packet
+        packet = Packet(self.packet_num, self.expected_packet_num, 1, 1, 0, "")
         self.send_sock.sendto(packet.encode(), (self.ne_addr, self.ne_port))
         logging.info("ACK Packet sent")
         
